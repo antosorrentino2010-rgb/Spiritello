@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
@@ -26,39 +27,45 @@ data class Spiritello(
 
 class MainActivity : Activity() {
 
-    private val developerCode = "131013"
+    companion object {
+        private const val PREFS_NAME = "spiritelli"
+        private const val PHOTO_REQUEST = 42
+        private const val DEVELOPER_CODE = "131013"
+
+        private val BACKGROUND = Color.rgb(247, 246, 251)
+        private val CARD = Color.WHITE
+        private val PRIMARY = Color.rgb(111, 76, 220)
+        private val PRIMARY_DARK = Color.rgb(87, 56, 180)
+        private val TEXT = Color.rgb(30, 29, 38)
+        private val SECONDARY = Color.rgb(112, 108, 122)
+        private val BORDER = Color.rgb(229, 226, 237)
+        private val IMAGE_BACKGROUND = Color.rgb(239, 235, 249)
+    }
 
     private val spiritelli = mutableListOf<Spiritello>()
 
     private val prefs by lazy {
-        getSharedPreferences("spiritelli", MODE_PRIVATE)
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
     }
 
+    private lateinit var homeList: LinearLayout
+
     private var photoIndex = -1
-
-    private lateinit var content: LinearLayout
-
-    private val bgColor = Color.rgb(248, 247, 252)
-    private val cardColor = Color.WHITE
-    private val primaryColor = Color.rgb(112, 76, 220)
-    private val textColor = Color.rgb(30, 28, 38)
-    private val secondaryText = Color.rgb(110, 106, 120)
-    private val borderColor = Color.rgb(232, 229, 239)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        load()
+        loadSpiritelli()
         showHome()
     }
 
-    // ------------------------------------------------------------
+    // ============================================================
     // HOME
-    // ------------------------------------------------------------
+    // ============================================================
 
     private fun showHome() {
 
-        val root = baseScreen()
+        val root = createRoot()
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -67,62 +74,88 @@ class MainActivity : Activity() {
 
         val logo = TextView(this).apply {
             text = "👻"
-            textSize = 42f
+            textSize = 40f
             gravity = Gravity.CENTER
         }
 
         header.addView(
             logo,
-            lp(-1, 60)
-        )
-
-        header.addView(
-            text(
-                "Spiritelli",
-                30f,
-                textColor,
-                Gravity.CENTER
+            params(
+                width = -1,
+                height = 58
             )
         )
 
+        val title = textView(
+            value = "Spiritelli",
+            size = 30f,
+            color = TEXT,
+            gravity = Gravity.CENTER
+        )
+
+        title.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        )
+
+        header.addView(title)
+
         header.addView(
-            text(
-                "La tua collezione Fortnite",
-                14f,
-                secondaryText,
-                Gravity.CENTER
+            textView(
+                value = "La tua collezione Fortnite",
+                size = 14f,
+                color = SECONDARY,
+                gravity = Gravity.CENTER
             )
         )
 
         root.addView(
             header,
-            lp(-1, -2, 0, 10, 0, 20)
+            params(
+                width = -1,
+                height = -2,
+                bottom = 20
+            )
         )
 
         val search = EditText(this).apply {
             hint = "Cerca uno Spiritello"
-            hintTextColor = Color.rgb(145, 140, 155)
+            setHintTextColor(
+                Color.rgb(145, 141, 154)
+            )
             textSize = 16f
             setSingleLine(true)
-            setTextColor(textColor)
-            background = rounded(Color.WHITE, 22)
-            setPadding(22, 0, 22, 0)
+            setTextColor(TEXT)
+            background = rounded(
+                CARD,
+                18
+            )
+            setPadding(
+                20,
+                0,
+                20,
+                0
+            )
         }
 
         root.addView(
             search,
-            lp(-1, 58, 0, 0, 0, 18)
+            params(
+                width = -1,
+                height = 56,
+                bottom = 16
+            )
         )
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
         }
 
-        content = LinearLayout(this).apply {
+        homeList = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
 
-        scroll.addView(content)
+        scroll.addView(homeList)
 
         root.addView(
             scroll,
@@ -133,84 +166,20 @@ class MainActivity : Activity() {
             )
         )
 
-        val developerButton = button(
-            "⚙  Modalità Developer",
-            primaryColor
-        ) {
-            developerLogin()
-        }
-
         root.addView(
-            developerButton,
-            lp(-1, 54, 0, 14, 0, 0)
+            primaryButton(
+                value = "⚙  Modalità Developer"
+            ) {
+                openDeveloperLogin()
+            },
+            params(
+                width = -1,
+                height = 54,
+                top = 14
+            )
         )
 
         setContentView(root)
-
-        fun render(query: String) {
-
-            content.removeAllViews()
-
-            val q = query
-                .trim()
-                .lowercase(Locale.getDefault())
-
-            val results = spiritelli.filter {
-                q.isEmpty() ||
-                    it.name
-                        .lowercase(Locale.getDefault())
-                        .contains(q)
-            }
-
-            if (results.isEmpty()) {
-
-                val empty = LinearLayout(this).apply {
-                    orientation = LinearLayout.VERTICAL
-                    gravity = Gravity.CENTER
-                    setPadding(20, 50, 20, 50)
-                }
-
-                empty.addView(
-                    text(
-                        "👻",
-                        42f,
-                        secondaryText,
-                        Gravity.CENTER
-                    )
-                )
-
-                empty.addView(
-                    text(
-                        "Nessuno Spiritello",
-                        18f,
-                        textColor,
-                        Gravity.CENTER
-                    )
-                )
-
-                empty.addView(
-                    text(
-                        "Prova con un altro nome",
-                        14f,
-                        secondaryText,
-                        Gravity.CENTER
-                    )
-                )
-
-                content.addView(empty)
-                return
-            }
-
-            results.forEach { spiritello ->
-
-                val index = spiritelli.indexOf(spiritello)
-
-                content.addView(
-                    spiritelloCard(spiritello, index),
-                    lp(-1, 92, 0, 0, 0, 12)
-                )
-            }
-        }
 
         search.addTextChangedListener(
             object : TextWatcher {
@@ -229,7 +198,9 @@ class MainActivity : Activity() {
                     before: Int,
                     count: Int
                 ) {
-                    render(s?.toString().orEmpty())
+                    renderHome(
+                        s?.toString().orEmpty()
+                    )
                 }
 
                 override fun afterTextChanged(
@@ -239,23 +210,108 @@ class MainActivity : Activity() {
             }
         )
 
-        render("")
+        renderHome("")
     }
 
-    private fun spiritelloCard(
+    private fun renderHome(query: String) {
+
+        homeList.removeAllViews()
+
+        val normalized = query
+            .trim()
+            .lowercase(Locale.getDefault())
+
+        val filtered = spiritelli.filter { spiritello ->
+            normalized.isEmpty() ||
+                spiritello.name
+                    .lowercase(Locale.getDefault())
+                    .contains(normalized)
+        }
+
+        if (filtered.isEmpty()) {
+
+            val empty = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(
+                    20,
+                    55,
+                    20,
+                    55
+                )
+            }
+
+            empty.addView(
+                textView(
+                    value = "👻",
+                    size = 38f,
+                    color = SECONDARY,
+                    gravity = Gravity.CENTER
+                )
+            )
+
+            empty.addView(
+                textView(
+                    value = "Nessuno Spiritello",
+                    size = 18f,
+                    color = TEXT,
+                    gravity = Gravity.CENTER
+                )
+            )
+
+            empty.addView(
+                textView(
+                    value = if (spiritelli.isEmpty()) {
+                        "Aggiungine uno dalla Modalità Developer"
+                    } else {
+                        "Prova a cercare un altro nome"
+                    },
+                    size = 14f,
+                    color = SECONDARY,
+                    gravity = Gravity.CENTER
+                )
+            )
+
+            homeList.addView(empty)
+            return
+        }
+
+        filtered.forEach { spiritello ->
+
+            val index = spiritelli.indexOf(spiritello)
+
+            homeList.addView(
+                createSpiritelloCard(
+                    spiritello = spiritello,
+                    index = index
+                ),
+                params(
+                    width = -1,
+                    height = 92,
+                    bottom = 12
+                )
+            )
+        }
+    }
+
+    private fun createSpiritelloCard(
         spiritello: Spiritello,
         index: Int
     ): View {
 
         val card = LinearLayout(this).apply {
-
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-
-            setPadding(12, 10, 16, 10)
-
-            background = rounded(cardColor, 20)
-
+            setPadding(
+                10,
+                10,
+                14,
+                10
+            )
+            background = rounded(
+                CARD,
+                20
+            )
             elevation = 2f
 
             setOnClickListener {
@@ -264,24 +320,21 @@ class MainActivity : Activity() {
         }
 
         val image = ImageView(this).apply {
-
             scaleType = ImageView.ScaleType.CENTER_CROP
-
             background = rounded(
-                Color.rgb(239, 235, 250),
+                IMAGE_BACKGROUND,
                 16
             )
 
             if (spiritello.imageUri != null) {
-
                 runCatching {
                     setImageURI(
-                        Uri.parse(spiritello.imageUri)
+                        Uri.parse(
+                            spiritello.imageUri
+                        )
                     )
                 }
-
             } else {
-
                 setImageResource(
                     android.R.drawable.ic_menu_gallery
                 )
@@ -290,34 +343,43 @@ class MainActivity : Activity() {
 
         card.addView(
             image,
-            lp(72, 72, 0, 0, 14, 0)
+            params(
+                width = 72,
+                height = 72,
+                right = 14
+            )
         )
 
-        val information = LinearLayout(this).apply {
+        val middle = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
         }
 
-        information.addView(
-            text(
-                spiritello.name,
-                17f,
-                textColor,
-                Gravity.START
-            )
+        val name = textView(
+            value = spiritello.name,
+            size = 17f,
+            color = TEXT,
+            gravity = Gravity.START
         )
 
-        information.addView(
-            text(
-                "Spiritello di Fortnite",
-                13f,
-                secondaryText,
-                Gravity.START
+        name.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        )
+
+        middle.addView(name)
+
+        middle.addView(
+            textView(
+                value = "Tocca per vedere i dettagli",
+                size = 13f,
+                color = SECONDARY,
+                gravity = Gravity.START
             )
         )
 
         card.addView(
-            information,
+            middle,
             LinearLayout.LayoutParams(
                 0,
                 -2,
@@ -326,58 +388,61 @@ class MainActivity : Activity() {
         )
 
         card.addView(
-            text(
-                "›",
-                28f,
-                secondaryText,
-                Gravity.CENTER
+            textView(
+                value = "›",
+                size = 28f,
+                color = SECONDARY,
+                gravity = Gravity.CENTER
             ),
-            lp(30, -1)
+            params(
+                width = 28,
+                height = 72
+            )
         )
 
         return card
     }
 
-    // ------------------------------------------------------------
-    // DETAILS
-    // ------------------------------------------------------------
+    // ============================================================
+    // DETTAGLI
+    // ============================================================
 
     private fun showDetails(index: Int) {
 
-        val spiritello = spiritelli[index]
+        if (index !in spiritelli.indices) {
+            showHome()
+            return
+        }
 
-        val root = baseScreen()
+        val spiritello = spiritelli[index]
+        val root = createRoot()
 
         root.addView(
-            button(
-                "‹  Indietro",
-                Color.TRANSPARENT,
-                textColor
-            ) {
+            secondaryButton("‹  Indietro") {
                 showHome()
             },
-            lp(-1, 50)
+            params(
+                width = -1,
+                height = 50
+            )
         )
 
         val image = ImageView(this).apply {
-
             scaleType = ImageView.ScaleType.CENTER_CROP
-
             background = rounded(
-                Color.rgb(239, 235, 250),
+                IMAGE_BACKGROUND,
                 24
             )
 
             if (spiritello.imageUri != null) {
-
                 runCatching {
                     setImageURI(
-                        Uri.parse(spiritello.imageUri)
+                        Uri.parse(
+                            spiritello.imageUri
+                        )
                     )
                 }
-
             } else {
-
                 setImageResource(
                     android.R.drawable.ic_menu_gallery
                 )
@@ -386,50 +451,77 @@ class MainActivity : Activity() {
 
         root.addView(
             image,
-            lp(-1, 300, 0, 12, 0, 20)
-        )
-
-        root.addView(
-            text(
-                spiritello.name,
-                28f,
-                textColor,
-                Gravity.CENTER
+            params(
+                width = -1,
+                height = 300,
+                top = 14,
+                bottom = 20
             )
         )
 
+        val title = textView(
+            value = spiritello.name,
+            size = 27f,
+            color = TEXT,
+            gravity = Gravity.CENTER
+        )
+
+        title.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        )
+
+        root.addView(title)
+
         root.addView(
-            text(
-                "Spiritello di Fortnite",
-                14f,
-                secondaryText,
-                Gravity.CENTER
+            textView(
+                value = "Spiritello di Fortnite",
+                size = 14f,
+                color = SECONDARY,
+                gravity = Gravity.CENTER
+            ),
+            params(
+                width = -1,
+                height = -2,
+                top = 4
             )
         )
 
         setContentView(root)
     }
 
-    // ------------------------------------------------------------
+    // ============================================================
     // DEVELOPER LOGIN
-    // ------------------------------------------------------------
+    // ============================================================
 
-    private fun developerLogin() {
+    private fun openDeveloperLogin() {
 
         val input = EditText(this).apply {
-
             hint = "Codice Developer"
             inputType = 2
             setSingleLine(true)
-            setPadding(20, 0, 20, 0)
+            setPadding(
+                18,
+                0,
+                18,
+                0
+            )
         }
 
         val dialog = AlertDialog.Builder(this)
             .setTitle("Modalità Developer")
-            .setMessage("Inserisci il codice per continuare.")
+            .setMessage(
+                "Inserisci il codice per continuare."
+            )
             .setView(input)
-            .setNegativeButton("Annulla", null)
-            .setPositiveButton("Accedi", null)
+            .setNegativeButton(
+                "Annulla",
+                null
+            )
+            .setPositiveButton(
+                "Accedi",
+                null
+            )
             .create()
 
         dialog.setOnShowListener {
@@ -441,15 +533,13 @@ class MainActivity : Activity() {
                 .setOnClickListener {
 
                     if (
-                        input.text.toString() ==
-                        developerCode
+                        input.text
+                            .toString() ==
+                        DEVELOPER_CODE
                     ) {
-
                         dialog.dismiss()
                         showDeveloper()
-
                     } else {
-
                         Toast.makeText(
                             this,
                             "Codice errato",
@@ -462,237 +552,395 @@ class MainActivity : Activity() {
         dialog.show()
     }
 
-    // ------------------------------------------------------------
+    // ============================================================
     // DEVELOPER
-    // ------------------------------------------------------------
+    // ============================================================
 
     private fun showDeveloper() {
 
-        val root = baseScreen()
+        val root = createRoot()
+
+        val title = textView(
+            value = "Developer",
+            size = 28f,
+            color = TEXT,
+            gravity = Gravity.CENTER
+        )
+
+        title.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        )
+
+        root.addView(title)
 
         root.addView(
-            text(
-                "Developer",
-                28f,
-                textColor,
-                Gravity.CENTER
+            textView(
+                value = "Gestisci la tua collezione",
+                size = 14f,
+                color = SECONDARY,
+                gravity = Gravity.CENTER
+            ),
+            params(
+                width = -1,
+                height = -2,
+                top = 4,
+                bottom = 24
             )
         )
 
         root.addView(
-            text(
-                "Gestisci la tua collezione",
-                14f,
-                secondaryText,
-                Gravity.CENTER
-            ),
-            lp(-1, -2, 0, 4, 0, 24)
-        )
-
-        root.addView(
-            button(
-                "＋  Aggiungi Spiritello",
-                primaryColor
+            primaryButton(
+                value = "＋  Aggiungi Spiritello"
             ) {
                 addSpiritello()
             },
-            lp(-1, 56, 0, 0, 0, 10)
+            params(
+                width = -1,
+                height = 56,
+                bottom = 10
+            )
         )
 
         root.addView(
-            button(
-                "✏  Gestisci Spiritelli",
-                Color.WHITE,
-                textColor
+            secondaryButton(
+                value = "✏  Gestisci Spiritelli"
             ) {
                 manageSpiritelli()
             },
-            lp(-1, 56, 0, 0, 0, 10)
+            params(
+                width = -1,
+                height = 56,
+                bottom = 10
+            )
         )
 
         root.addView(
-            button(
-                "←  Torna all'app",
-                Color.WHITE,
-                textColor
+            secondaryButton(
+                value = "←  Torna all'app"
             ) {
                 showHome()
             },
-            lp(-1, 56, 0, 0, 0, 0)
+            params(
+                width = -1,
+                height = 56
+            )
         )
 
         setContentView(root)
     }
 
-    // ------------------------------------------------------------
-    // ADD
-    // ------------------------------------------------------------
+    // ============================================================
+    // AGGIUNGI
+    // ============================================================
 
     private fun addSpiritello() {
 
         val input = EditText(this).apply {
-
             hint = "Nome dello Spiritello"
             setSingleLine(true)
-            setPadding(20, 0, 20, 0)
+            setPadding(
+                18,
+                0,
+                18,
+                0
+            )
         }
 
         AlertDialog.Builder(this)
             .setTitle("Nuovo Spiritello")
             .setView(input)
-            .setNegativeButton("Annulla", null)
-            .setPositiveButton("Aggiungi") { _, _ ->
+            .setNegativeButton(
+                "Annulla",
+                null
+            )
+            .setPositiveButton(
+                "Aggiungi"
+            ) { _, _ ->
 
-                val name =
-                    input.text.toString().trim()
+                val name = input.text
+                    .toString()
+                    .trim()
 
-                if (name.isNotEmpty()) {
-
-                    spiritelli.add(
-                        Spiritello(name)
-                    )
-
-                    save()
-
-                    showDeveloper()
+                if (name.isEmpty()) {
+                    Toast.makeText(
+                        this,
+                        "Inserisci un nome.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return@setPositiveButton
                 }
+
+                spiritelli.add(
+                    Spiritello(name)
+                )
+
+                saveSpiritelli()
+                showDeveloper()
             }
             .show()
     }
 
-    // ------------------------------------------------------------
-    // MANAGE
-    // ------------------------------------------------------------
+    // ============================================================
+    // GESTIONE SPIRITELLI
+    // ============================================================
 
     private fun manageSpiritelli() {
 
-        val root = baseScreen()
+        val root = createRoot()
 
         root.addView(
-            button(
-                "‹  Indietro",
-                Color.TRANSPARENT,
-                textColor
-            ) {
+            secondaryButton("‹  Indietro") {
                 showDeveloper()
             },
-            lp(-1, 50)
+            params(
+                width = -1,
+                height = 50
+            )
+        )
+
+        val title = textView(
+            value = "I tuoi Spiritelli",
+            size = 26f,
+            color = TEXT,
+            gravity = Gravity.CENTER
+        )
+
+        title.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
         )
 
         root.addView(
-            text(
-                "I tuoi Spiritelli",
-                26f,
-                textColor,
-                Gravity.CENTER
-            ),
-            lp(-1, -2, 0, 10, 0, 18)
+            title,
+            params(
+                width = -1,
+                height = -2,
+                top = 10,
+                bottom = 18
+            )
         )
 
         if (spiritelli.isEmpty()) {
 
             root.addView(
-                text(
-                    "Non hai ancora aggiunto Spiritelli.",
-                    15f,
-                    secondaryText,
-                    Gravity.CENTER
+                textView(
+                    value = "Non hai ancora aggiunto Spiritelli.",
+                    size = 15f,
+                    color = SECONDARY,
+                    gravity = Gravity.CENTER
                 )
             )
 
         } else {
 
+            val scroll = ScrollView(this)
+
+            val list = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+
             spiritelli.forEachIndexed { index, spiritello ->
 
-                root.addView(
-                    button(
-                        "👻  ${spiritello.name}",
-                        Color.WHITE,
-                        textColor
-                    ) {
-                        editSpiritello(index)
-                    },
-                    lp(-1, 56, 0, 0, 0, 10)
+                list.addView(
+                    manageCard(
+                        spiritello = spiritello,
+                        index = index
+                    ),
+                    params(
+                        width = -1,
+                        height = 84,
+                        bottom = 10
+                    )
                 )
             }
+
+            scroll.addView(list)
+
+            root.addView(
+                scroll,
+                LinearLayout.LayoutParams(
+                    -1,
+                    0,
+                    1f
+                )
+            )
         }
 
         setContentView(root)
     }
 
-    // ------------------------------------------------------------
-    // EDIT
-    // ------------------------------------------------------------
+    private fun manageCard(
+        spiritello: Spiritello,
+        index: Int
+    ): View {
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(
+                10,
+                10,
+                12,
+                10
+            )
+            background = rounded(
+                CARD,
+                18
+            )
+            elevation = 1f
+
+            setOnClickListener {
+                editSpiritello(index)
+            }
+        }
+
+        val image = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = rounded(
+                IMAGE_BACKGROUND,
+                14
+            )
+
+            if (spiritello.imageUri != null) {
+                runCatching {
+                    setImageURI(
+                        Uri.parse(
+                            spiritello.imageUri
+                        )
+                    )
+                }
+            } else {
+                setImageResource(
+                    android.R.drawable.ic_menu_gallery
+                )
+            }
+        }
+
+        card.addView(
+            image,
+            params(
+                width = 64,
+                height = 64,
+                right = 12
+            )
+        )
+
+        val name = textView(
+            value = spiritello.name,
+            size = 16f,
+            color = TEXT,
+            gravity = Gravity.CENTER_VERTICAL
+        )
+
+        name.setTypeface(
+            Typeface.DEFAULT,
+            Typeface.BOLD
+        )
+
+        card.addView(
+            name,
+            LinearLayout.LayoutParams(
+                0,
+                -1,
+                1f
+            )
+        )
+
+        card.addView(
+            textView(
+                value = "›",
+                size = 26f,
+                color = SECONDARY,
+                gravity = Gravity.CENTER
+            ),
+            params(
+                width = 26,
+                height = -1
+            )
+        )
+
+        return card
+    }
+
+    // ============================================================
+    // MODIFICA
+    // ============================================================
 
     private fun editSpiritello(index: Int) {
+
+        if (index !in spiritelli.indices) {
+            return
+        }
 
         val spiritello = spiritelli[index]
 
         val input = EditText(this).apply {
-
             setText(spiritello.name)
             selectAll()
             setSingleLine(true)
-            setPadding(20, 0, 20, 0)
+            setPadding(
+                18,
+                0,
+                18,
+                0
+            )
         }
 
         AlertDialog.Builder(this)
             .setTitle("Modifica Spiritello")
             .setView(input)
-            .setNeutralButton("📷 Foto") { _, _ ->
-
-                photoIndex = index
-
-                val intent =
-                    Intent(Intent.ACTION_OPEN_DOCUMENT)
-                        .apply {
-
-                            type = "image/*"
-
-                            addCategory(
-                                Intent.CATEGORY_OPENABLE
-                            )
-
-                            addFlags(
-                                Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                            )
-                        }
-
-                startActivityForResult(
-                    intent,
-                    42
-                )
+            .setNeutralButton(
+                "📷 Foto"
+            ) { _, _ ->
+                choosePhoto(index)
             }
-            .setNegativeButton("Elimina") { _, _ ->
-
+            .setNegativeButton(
+                "Elimina"
+            ) { _, _ ->
                 confirmDelete(index)
             }
-            .setPositiveButton("Salva") { _, _ ->
+            .setPositiveButton(
+                "Salva"
+            ) { _, _ ->
 
-                val name =
-                    input.text.toString().trim()
+                val newName = input.text
+                    .toString()
+                    .trim()
 
-                if (name.isNotEmpty()) {
-                    spiritello.name = name
+                if (newName.isEmpty()) {
+
+                    Toast.makeText(
+                        this,
+                        "Il nome non può essere vuoto.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+
+                    return@setPositiveButton
                 }
 
-                save()
+                spiritello.name = newName
+
+                saveSpiritelli()
                 manageSpiritelli()
             }
             .show()
     }
 
-    // ------------------------------------------------------------
-    // DELETE
-    // ------------------------------------------------------------
+    // ============================================================
+    // ELIMINA
+    // ============================================================
 
     private fun confirmDelete(index: Int) {
+
+        if (index !in spiritelli.indices) {
+            return
+        }
 
         AlertDialog.Builder(this)
             .setTitle("Eliminare Spiritello?")
             .setMessage(
-                "Questa operazione non può essere annullata."
+                "Lo Spiritello verrà rimosso dalla raccolta."
             )
             .setNegativeButton(
                 "Annulla",
@@ -704,16 +952,44 @@ class MainActivity : Activity() {
 
                 spiritelli.removeAt(index)
 
-                save()
-
+                saveSpiritelli()
                 manageSpiritelli()
             }
             .show()
     }
 
-    // ------------------------------------------------------------
-    // PHOTO
-    // ------------------------------------------------------------
+    // ============================================================
+    // FOTO
+    // ============================================================
+
+    private fun choosePhoto(index: Int) {
+
+        if (index !in spiritelli.indices) {
+            return
+        }
+
+        photoIndex = index
+
+        val intent = Intent(
+            Intent.ACTION_OPEN_DOCUMENT
+        ).apply {
+            type = "image/*"
+
+            addCategory(
+                Intent.CATEGORY_OPENABLE
+            )
+
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            )
+        }
+
+        startActivityForResult(
+            intent,
+            PHOTO_REQUEST
+        )
+    }
 
     @Deprecated("Legacy API")
     override fun onActivityResult(
@@ -729,41 +1005,53 @@ class MainActivity : Activity() {
         )
 
         if (
-            requestCode == 42 &&
-            resultCode == RESULT_OK &&
-            data?.data != null &&
-            photoIndex >= 0
+            requestCode != PHOTO_REQUEST ||
+            resultCode != RESULT_OK
         ) {
-
-            val uri = data.data!!
-
-            runCatching {
-
-                contentResolver
-                    .takePersistableUriPermission(
-                        uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
-            }
-
-            spiritelli[photoIndex].imageUri =
-                uri.toString()
-
-            save()
-
-            photoIndex = -1
-
-            manageSpiritelli()
+            return
         }
+
+        val uri = data?.data
+
+        if (uri == null) {
+            photoIndex = -1
+            return
+        }
+
+        if (
+            photoIndex < 0 ||
+            photoIndex >= spiritelli.size
+        ) {
+            photoIndex = -1
+            return
+        }
+
+        runCatching {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }
+
+        spiritelli[photoIndex].imageUri =
+            uri.toString()
+
+        saveSpiritelli()
+
+        photoIndex = -1
+
+        manageSpiritelli()
     }
 
-    // ------------------------------------------------------------
-    // STORAGE
-    // ------------------------------------------------------------
+    // ============================================================
+    // SALVATAGGIO
+    // ============================================================
 
-    private fun save() {
+    private fun saveSpiritelli() {
 
         val editor = prefs.edit()
+
+        editor.clear()
 
         editor.putInt(
             "count",
@@ -777,70 +1065,70 @@ class MainActivity : Activity() {
                 spiritello.name
             )
 
-            editor.putString(
-                "img_$index",
-                spiritello.imageUri
-            )
+            if (spiritello.imageUri != null) {
+                editor.putString(
+                    "image_$index",
+                    spiritello.imageUri
+                )
+            }
         }
 
         editor.apply()
     }
 
-    private fun load() {
+    private fun loadSpiritelli() {
 
         spiritelli.clear()
 
-        val count =
-            prefs.getInt("count", 0)
+        val count = prefs.getInt(
+            "count",
+            0
+        )
 
         repeat(count) { index ->
 
-            val name =
-                prefs.getString(
-                    "name_$index",
-                    "Spiritello"
-                ) ?: "Spiritello"
+            val name = prefs.getString(
+                "name_$index",
+                "Spiritello"
+            ) ?: "Spiritello"
 
-            val image =
-                prefs.getString(
-                    "img_$index",
-                    null
-                )
+            val imageUri = prefs.getString(
+                "image_$index",
+                null
+            )
 
             spiritelli.add(
                 Spiritello(
-                    name,
-                    image
+                    name = name,
+                    imageUri = imageUri
                 )
             )
         }
     }
 
-    // ------------------------------------------------------------
+    // ============================================================
     // UI HELPERS
-    // ------------------------------------------------------------
+    // ============================================================
 
-    private fun baseScreen(): LinearLayout {
+    private fun createRoot(): LinearLayout {
 
         return LinearLayout(this).apply {
-
-            orientation =
-                LinearLayout.VERTICAL
+            orientation = LinearLayout.VERTICAL
 
             setPadding(
+                20,
                 22,
-                24,
-                22,
+                20,
                 20
             )
 
             setBackgroundColor(
-                bgColor
+                BACKGROUND
             )
         }
     }
 
-    private fun text(
+    private fun textView(
         value: String,
         size: Float,
         color: Int,
@@ -848,7 +1136,6 @@ class MainActivity : Activity() {
     ): TextView {
 
         return TextView(this).apply {
-
             text = value
             textSize = size
             setTextColor(color)
@@ -863,34 +1150,24 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun button(
+    private fun primaryButton(
         value: String,
-        backgroundColor: Int,
-        foregroundColor: Int = Color.WHITE,
         action: () -> Unit
     ): TextView {
 
         return TextView(this).apply {
-
             text = value
             textSize = 15f
-
             gravity = Gravity.CENTER
 
-            setTextColor(
-                foregroundColor
-            )
+            setTextColor(Color.WHITE)
 
             background = rounded(
-                backgroundColor,
+                PRIMARY,
                 18
             )
 
             elevation = 2f
-
-            setOnClickListener {
-                action()
-            }
 
             setPadding(
                 12,
@@ -898,6 +1175,72 @@ class MainActivity : Activity() {
                 12,
                 0
             )
+
+            setOnClickListener {
+                action()
+            }
+
+            setOnTouchListener { view, event ->
+                when (event.action) {
+                    android.view.MotionEvent.ACTION_DOWN -> {
+                        view.alpha = 0.85f
+                    }
+
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL -> {
+                        view.alpha = 1f
+                    }
+                }
+
+                false
+            }
+        }
+    }
+
+    private fun secondaryButton(
+        value: String,
+        action: () -> Unit
+    ): TextView {
+
+        return TextView(this).apply {
+            text = value
+            textSize = 15f
+            gravity = Gravity.CENTER
+
+            setTextColor(TEXT)
+
+            background = rounded(
+                CARD,
+                18
+            )
+
+            elevation = 1f
+
+            setPadding(
+                12,
+                0,
+                12,
+                0
+            )
+
+            setOnClickListener {
+                action()
+            }
+
+            setOnTouchListener { view, event ->
+                when (event.action) {
+                    android.view.MotionEvent.ACTION_DOWN -> {
+                        view.alpha = 0.85f
+                    }
+
+                    android.view.MotionEvent.ACTION_UP,
+                    android.view.MotionEvent.ACTION_CANCEL -> {
+                        view.alpha = 1f
+                    }
+                }
+
+                false
+            }
         }
     }
 
@@ -907,7 +1250,6 @@ class MainActivity : Activity() {
     ): GradientDrawable {
 
         return GradientDrawable().apply {
-
             setColor(color)
 
             cornerRadius =
@@ -915,12 +1257,12 @@ class MainActivity : Activity() {
 
             setStroke(
                 1,
-                borderColor
+                BORDER
             )
         }
     }
 
-    private fun lp(
+    private fun params(
         width: Int,
         height: Int,
         left: Int = 0,
@@ -933,7 +1275,6 @@ class MainActivity : Activity() {
             width,
             height
         ).apply {
-
             setMargins(
                 left,
                 top,
