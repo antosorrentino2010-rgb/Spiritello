@@ -25,17 +25,57 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build APK
+      - name: Build Release APK
         run: gradle :app:assembleRelease
 
-      - name: Find APK
+      - name: Find Android Build Tools
+        id: tools
         run: |
-          echo "Cerco gli APK generati..."
-          find app/build/outputs -type f -name "*.apk" -print
+          BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
+          echo "BUILD_TOOLS=$BUILD_TOOLS" >> "$GITHUB_OUTPUT"
+          echo "Usando Build Tools: $BUILD_TOOLS"
 
-      - name: Upload APK
+      - name: Create signing key
+        run: |
+          keytool -genkeypair \
+            -v \
+            -keystore spiritelli-release.jks \
+            -alias spiritelli \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass SpiritelliKey123 \
+            -keypass SpiritelliKey123 \
+            -dname "CN=Spiritelli, OU=Spiritelli, O=Spiritelli, L=Italy, ST=Italy, C=IT"
+
+      - name: Align APK
+        run: |
+          "${{ steps.tools.outputs.BUILD_TOOLS }}/zipalign" \
+            -v -p 4 \
+            app/build/outputs/apk/release/app-release.apk \
+            app-release-aligned.apk
+
+      - name: Sign APK
+        run: |
+          "${{ steps.tools.outputs.BUILD_TOOLS }}/apksigner" sign \
+            --ks spiritelli-release.jks \
+            --ks-key-alias spiritelli \
+            --ks-pass pass:SpiritelliKey123 \
+            --key-pass pass:SpiritelliKey123 \
+            --out Spiritelli-installabile.apk \
+            app-release-aligned.apk
+
+      - name: Verify APK signature
+        run: |
+          "${{ steps.tools.outputs.BUILD_TOOLS }}/apksigner" verify --verbose Spiritelli-installabile.apk
+
+      - name: Show APK
+        run: |
+          ls -lh Spiritelli-installabile.apk
+
+      - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
-          name: Spiritelli-APK
-          path: app/build/outputs/**/*.apk
+          name: Spiritelli-APK-INSTALLABILE
+          path: Spiritelli-installabile.apk
           if-no-files-found: error
