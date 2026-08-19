@@ -28,12 +28,23 @@ jobs:
       - name: Build Release APK
         run: gradle :app:assembleRelease
 
+      - name: Find APK
+        run: |
+          echo "APK generati:"
+          find app/build/outputs -type f -name "*.apk" -print
+
       - name: Find Android Build Tools
         id: tools
         run: |
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -n 1)
           echo "BUILD_TOOLS=$BUILD_TOOLS" >> "$GITHUB_OUTPUT"
-          echo "Usando Build Tools: $BUILD_TOOLS"
+
+      - name: Align APK
+        run: |
+          "${{ steps.tools.outputs.BUILD_TOOLS }}/zipalign" \
+            -v -p 4 \
+            app/build/outputs/apk/release/app-release-unsigned.apk \
+            app-release-aligned.apk
 
       - name: Create signing key
         run: |
@@ -48,13 +59,6 @@ jobs:
             -keypass SpiritelliKey123 \
             -dname "CN=Spiritelli, OU=Spiritelli, O=Spiritelli, L=Italy, ST=Italy, C=IT"
 
-      - name: Align APK
-        run: |
-          "${{ steps.tools.outputs.BUILD_TOOLS }}/zipalign" \
-            -v -p 4 \
-            app/build/outputs/apk/release/app-release.apk \
-            app-release-aligned.apk
-
       - name: Sign APK
         run: |
           "${{ steps.tools.outputs.BUILD_TOOLS }}/apksigner" sign \
@@ -65,13 +69,9 @@ jobs:
             --out Spiritelli-installabile.apk \
             app-release-aligned.apk
 
-      - name: Verify APK signature
+      - name: Verify APK
         run: |
           "${{ steps.tools.outputs.BUILD_TOOLS }}/apksigner" verify --verbose Spiritelli-installabile.apk
-
-      - name: Show APK
-        run: |
-          ls -lh Spiritelli-installabile.apk
 
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
